@@ -12,28 +12,62 @@
 // Index 9: Black Rooks
 // Index 10: Black Queen
 // Index 11: Black King
-
 mod board;
 
 use board::Board;
+use ggez::{
+    event,
+    glam::*,
+    graphics::{self, Color},
+    Context, GameResult,
+    conf::WindowMode
+};
 
-fn main() {
-    let white_pawns: u64 = 0x00FF000000000000;
-    let white_knights: u64 = 0x4200000000000000;
-    let white_bishops: u64 = 0x2400000000000000;
-    let white_rooks: u64 = 0x8100000000000000;
-    let white_queen: u64 = 0x1000000000000000;
-    let white_king: u64 = 0x0800000000000000;
-    let black_pawns: u64 = 0x000000000000FF00;
-    let black_knights: u64 = 0x0000000000000042;
-    let black_bishops: u64 = 0x0000000000000024;
-    let black_rooks: u64 = 0x0000000000000081;
-    let black_queen: u64 = 0x0000000000000010;
-    let black_king: u64 = 0x0000000000000008;
+struct MainState {
+}
 
+
+impl event::EventHandler<ggez::GameError> for MainState {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let mut canvas = graphics::Canvas::from_frame(ctx, graphics::Color::from([0.1, 0.2, 0.3, 1.0]));
+
+        let square_size = 100.0;
+
+        for row in 0..8 {
+            for col in 0..8 {
+                let color = if (row + col) % 2 == 0 {
+                    Color::WHITE
+                }else{
+                    Color::BLACK
+                };
+                let rectangle = graphics::Mesh::new_rectangle(
+                            ctx,
+                            graphics::DrawMode::fill(),
+                            graphics::Rect::new(square_size * row as f32, square_size * col as f32, square_size, square_size),
+                            color,
+                )?;
+                canvas.draw(&rectangle, Vec2::new(0.0, 0.0));
+            }
+        }
+        canvas.finish(ctx)?;
+
+        Ok(())
+    }
+}
+
+fn main() -> GameResult {
     let chess_board = Board {
-        bitboards : [white_pawns, white_knights, white_bishops, white_rooks, white_queen, white_king, black_pawns, black_knights, black_bishops, black_rooks, black_queen, black_king]
+        bitboards : [71776119061217280, 4755801206503243776, 2594073385365405696, 9295429630892703744, 1152921504606846976, 576460752303423488, 65280, 66, 36, 129, 16, 8]
     };
 
     println!("{:?}", chess_board.bitboards);
+
+    let cb = ggez::ContextBuilder::new("super_simple", "ggez").window_mode(WindowMode::default().dimensions(800.0, 800.0));
+    let (ctx, event_loop) = cb.build()?;
+    let state = MainState {};
+    event::run(ctx, event_loop, state)
 }
