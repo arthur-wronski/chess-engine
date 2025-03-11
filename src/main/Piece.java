@@ -1,5 +1,8 @@
 package main;
 
+import javax.swing.*;
+import java.awt.*;
+
 public class Piece {
     private final Colour colour;
     private final PieceType type;
@@ -20,5 +23,10 @@ public class Piece {
     @Override
     public String toString(){
         return colour.toString() + " " +  type.toString();
+    }
+
+    public Image getPieceImage(){
+        String name = this.colour.toString().toLowerCase() + "-" + this.type.toString().toLowerCase();
+        return new ImageIcon("src/img/" + name + ".png").getImage();
     }
 }
