@@ -35,4 +35,26 @@ public class Board {
     public long[] getBitboards(){
         return this.bitboards;
     }
+
+    public double evaluatePosition(){
+        // how much the pieces are worth for eval: pawn = 1, knight = 3, bishop = 3.5, rook = 5, queen = 9
+        double[] pieceWeights = new double[]{1, 3, 3.5, 5, 9};
+
+        // eval will always give white a slight edge
+        double evaluation = 0.2;
+
+        // skipping king bitboards for evaluation
+        for (int i = 0; i < bitboards.length - 2; i++){
+            // will add or subtract based on if it's white or black's pieces
+            boolean negative = i % 2 == 1;
+
+            // get the total number of that particular piece on the board
+            int pieceCount = Long.bitCount(bitboards[i]);
+            double totalPieceWorth = pieceCount * pieceWeights[i / 2];
+
+            evaluation += (negative ? -totalPieceWorth : totalPieceWorth);
+        }
+
+        return evaluation;
+    }
 }
