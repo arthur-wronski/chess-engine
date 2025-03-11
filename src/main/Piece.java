@@ -1,8 +1,13 @@
 package main;
 
 public class Piece {
-    private Colour colour;
-    private PieceType type;
+    private final Colour colour;
+    private final PieceType type;
+
+    public Piece(Colour colour, PieceType type){
+        this.colour = colour;
+        this.type = type;
+    }
 
     public Colour getColour() {
         return colour;
@@ -10,5 +15,10 @@ public class Piece {
 
     public PieceType getType() {
         return type;
+    }
+
+    @Override
+    public String toString(){
+        return colour.toString() + " " +  type.toString();
     }
 }
