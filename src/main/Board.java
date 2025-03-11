@@ -13,7 +13,7 @@ public class Board {
     // e.g. bishop = 2 and black = 1 => access 2 * 2 + 1 = 5th bitmap
     private final long[] bitboards;
     private Colour colourToPlay;
-    private List<Move> allMoves;
+    private List<Move> legalMoves;
 
     public Board() {
         // starting position
@@ -38,15 +38,15 @@ public class Board {
         };
 
         this.colourToPlay = Colour.White;
-        this.allMoves = getAllLegalMoves();
+        this.legalMoves = calculateAllLegalMoves();
     }
 
     public long[] getBitboards(){
         return this.bitboards;
     }
 
-    public List<Move> getAllMoves(){
-        return this.allMoves;
+    public List<Move> getLegalMoves(){
+        return this.legalMoves;
     }
 
     public double evaluatePosition(){
@@ -71,7 +71,7 @@ public class Board {
         return evaluation;
     }
 
-    private List<Move> getAllLegalMoves(){
+    private List<Move> calculateAllLegalMoves(){
         List<Move> moves = new ArrayList<Move>();
 
         for (int i = 0; i < 64; i++){

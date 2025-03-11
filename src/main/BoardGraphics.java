@@ -100,7 +100,7 @@ class BoardGraphics extends JPanel {
         List<Integer> targetSquares = new ArrayList<>();
         // based on squareIndex, go through allMoves and get all moves which have
         // squareIndex as startingSquare and return a list of their targetSquares
-        for (Move move : board.getAllMoves()){
+        for (Move move : board.getLegalMoves()){
             if (move.getStartingSquare() == squareIndex){
                 targetSquares.add(move.getTargetSquare());
             }
