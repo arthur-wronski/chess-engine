@@ -1,5 +1,6 @@
 package main;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 
@@ -39,7 +40,7 @@ class BoardGraphics extends JPanel {
         }
 
         // draw square
-        g.fillRect(row * SQUARE_SIZE,column * SQUARE_SIZE,SQUARE_SIZE,SQUARE_SIZE);
+        g.fillRect(column * SQUARE_SIZE,700 - row * SQUARE_SIZE,SQUARE_SIZE,SQUARE_SIZE);
     }
 
     private void drawPiece(Graphics g, int row, int column){
@@ -54,7 +55,7 @@ class BoardGraphics extends JPanel {
             long bitboard = bitboards[k];
             if ((bitboard >> squareIndex & 1) != 0) {
                 Piece piece = getPieceFromBitboardIndex(k);
-                System.out.println(piece);
+                g.drawImage(piece.getPieceImage(), column * 100,700 - row * 100, 100, 100, this);
                 // there will never be two pieces on the same square therefore we can stop iterating
                 return;
             }
