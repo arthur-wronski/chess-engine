@@ -23,11 +23,11 @@ public class Board {
                 0x0000000000000081L, // white rooks
                 0x8100000000000000L, // black rooks
 
-                0x0000000000000010L, // white queen
-                0x1000000000000000L, // black queen
+                0x0000000000000008L, // white queen
+                0x0800000000000000L, // black queen
 
-                0x0000000000000008L, // white king
-                0x0800000000000000L, // black king
+                0x0000000000000010L, // white king
+                0x1000000000000000L, // black king
 
         };
     }
