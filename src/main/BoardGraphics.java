@@ -43,7 +43,7 @@ class BoardGraphics extends JPanel {
             public void mouseReleased(MouseEvent me) {
                 Point releasePoint = me.getPoint();
                 // Check if the release point is close to the press point (within a few pixels)
-                if (pressPoint.distance(releasePoint) < 5) {  // 5 pixels tolerance for slight movement
+                if (pressPoint.distance(releasePoint) < 10) {  // 10 pixels tolerance for slight movement
                     // Treat this as a valid click
                     int clickedSquare = getSquareClicked(me.getX(), me.getY());
                     possibleMoves = getPossibleMoves(clickedSquare);
@@ -87,9 +87,9 @@ class BoardGraphics extends JPanel {
     private void drawSquare(Graphics g, int row, int column){
         // get square colour based on coordinate
         if ((row + column) % 2 == 0) {
-            g.setColor(new Color(109, 77, 54));
+            g.setColor(new Color(38, 34, 87));
         } else {
-            g.setColor(new Color(181, 137, 105));
+            g.setColor(new Color(236, 219, 219));
         }
 
         // draw square
