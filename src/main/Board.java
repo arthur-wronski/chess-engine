@@ -309,10 +309,18 @@ public class Board {
         int bitboardIndex = getBitboardIndexFromPiece(move.getPieceToMove());
         // flip bit on starting square
         bitboards[bitboardIndex] ^= 1L << move.getStartingSquare();
-        // flip bit on target square
-        bitboards[bitboardIndex] ^= 1L << move.getTargetSquare();
+
+        long mask = ~(1L << move.getTargetSquare());
 
         // flip all other bitboard[targetSquare] to 0
+        for (int i = 0; i < bitboards.length; i++){
+            // sets bitboard[targetSquare] = 0
+            bitboards[i] &= mask;
+        }
+
+        // flip bit on target square, (sets to 1 as was set to 0 just before)
+        bitboards[bitboardIndex] ^= 1L << move.getTargetSquare();
+
         // trigger Eval recalculation
         evaluatePosition();
         legalMoves = calculateAllLegalMoves();
