@@ -5,15 +5,13 @@ import java.util.List;
 import java.util.Optional;
 
 public class Board {
-    // on instantiation, create all the pieces and set up starting position
-    // will have all the functions for moving and taking pieces, etc...
-
     // array of bitmaps in order: white pawns, black pawns, white knights, ..., black king.
     // Will use enum ordering in piece type + colour to quickly access correct bitmap
     // e.g. bishop = 2 and black = 1 => access 2 * 2 + 1 = 5th bitmap
     private final long[] bitboards;
     private Colour colourToPlay;
     private List<Move> legalMoves;
+    private double evaluation;
 
     public Board() {
         // starting position
@@ -39,22 +37,19 @@ public class Board {
 
         this.colourToPlay = Colour.White;
         this.legalMoves = calculateAllLegalMoves();
-    }
-
-    public long[] getBitboards(){
-        return this.bitboards;
+        this.evaluation = 0.2;
     }
 
     public List<Move> getLegalMoves(){
         return this.legalMoves;
     }
 
-    public double evaluatePosition(){
+    public void evaluatePosition(){
         // how much the pieces are worth for eval: pawn = 1, knight = 3, bishop = 3.5, rook = 5, queen = 9
         double[] pieceWeights = new double[]{1, 3, 3.5, 5, 9};
 
         // eval will always give white a slight edge
-        double evaluation = 0.2;
+        double evaluationTotal = 0.2;
 
         // skipping king bitboards for evaluation
         for (int i = 0; i < bitboards.length - 2; i++){
@@ -64,11 +59,11 @@ public class Board {
             // get the total number of that particular piece on the board
             int pieceCount = Long.bitCount(bitboards[i]);
             double totalPieceWorth = pieceCount * pieceWeights[i / 2];
-
-            evaluation += (negative ? -totalPieceWorth : totalPieceWorth);
+            evaluationTotal += (negative ? -totalPieceWorth : totalPieceWorth);
         }
 
-        return evaluation;
+        System.out.println("Current evaluation: " + evaluationTotal);
+        evaluation = evaluationTotal;
     }
 
     private List<Move> calculateAllLegalMoves(){
@@ -118,18 +113,13 @@ public class Board {
 
     private List<Move> getAllPieceMoves(Piece piece, int position){
         List<Move> moves = new ArrayList<>();
-        Colour colour = piece.getColour();
-        long allies = colour == Colour.White ? getWhiteBitboard() : getBlackBitboard();
-        long enemies = colour == Colour.White ? getBlackBitboard() : getWhiteBitboard();
 
         switch (piece.getType()){
             case PieceType.Pawn:
                 moves.addAll(getPawnMoves(piece, position));
                 break;
             case PieceType.Knight:
-                // iterate through all possible move indexes, must check that it is within board + no allies
-
-                // can skip exploring a lot of moves if check position at beginning
+                moves.addAll(getKnightMoves(piece, position));
                 break;
             case PieceType.Bishop:
                 moves.addAll(getBishopMoves(piece, position));
@@ -163,6 +153,15 @@ public class Board {
         // check if move forward is within board and target square is unoccupied
         if (squareOnBoard(forwardIndex) && (getBothBitboards() >> forwardIndex & 1) == 0){
             moves.add(new Move(piece, position, forwardIndex));
+
+            int currentRow = position / 8;
+            boolean hasNotMoved = colour == Colour.White ? currentRow == 1 : currentRow == 6;
+            int twoForwardIndex = colour == Colour.White ? forwardIndex + 8 : forwardIndex - 8;
+
+            // if pawn hasn't moved and square free
+            if (hasNotMoved && (getBothBitboards() >> twoForwardIndex & 1) == 0 ){
+                moves.add(new Move(piece, position, twoForwardIndex));
+            }
         }
 
         // take diagonally if piece of opposite colour there and within board
@@ -184,8 +183,6 @@ public class Board {
 
     private List<Move> getBishopMoves(Piece piece, int position){
         List<Move> moves = new ArrayList<>();
-        long allies = piece.getColour() == Colour.White ? getWhiteBitboard() : getBlackBitboard();
-        long enemies = piece.getColour() == Colour.White ? getBlackBitboard() : getWhiteBitboard();
 
         // only need to explore 4 directions, iterate until it finds enemy or ally
         int squaresUnder = position / 8;
@@ -194,62 +191,22 @@ public class Board {
         int squaresLeft = position % 8;
         int squaresRight = 7 - squaresLeft;
 
-        for (int i = 1; i < Math.min(squaresOver, squaresRight); i++){
-            int targetSquare = position + 9 * i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
+        moves.addAll(exploreDirection(piece, position, 9, Math.min(squaresOver, squaresRight)));
+        moves.addAll(exploreDirection(piece, position, 7, Math.min(squaresOver, squaresLeft)));
+        moves.addAll(exploreDirection(piece, position, -9, Math.min(squaresUnder, squaresLeft)));
+        moves.addAll(exploreDirection(piece, position, -7, Math.min(squaresUnder, squaresRight)));
 
-            if ((allies >> targetSquare & 1) == 1){
-                break;
-            }
+        return moves;
+    }
 
-            moves.add(new Move(piece, position, targetSquare));
+    private List<Move> exploreDirection(Piece piece, int position, int direction, int maxMoves){
+        List<Move> moves = new ArrayList<>();
 
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
-            }
-        }
+        long allies = piece.getColour() == Colour.White ? getWhiteBitboard() : getBlackBitboard();
+        long enemies = piece.getColour() == Colour.White ? getBlackBitboard() : getWhiteBitboard();
 
-        for (int i = 1; i < Math.min(squaresOver, squaresLeft); i++){
-            int targetSquare = position + 7 * i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
-
-            if ((allies >> targetSquare & 1) == 1){
-                break;
-            }
-
-            moves.add(new Move(piece, position, targetSquare));
-
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
-            }
-        }
-
-        for (int i = 1; i < Math.min(squaresUnder, squaresLeft); i++){
-            int targetSquare = position - 9 * i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
-
-            if ((allies >> targetSquare & 1) == 1){
-                break;
-            }
-
-            moves.add(new Move(piece, position, targetSquare));
-
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
-            }
-        }
-
-        for (int i = 1; i < Math.min(squaresUnder, squaresRight); i++){
-            int targetSquare = position - 7 * i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
+        for (int i = 1; i <= maxMoves; i++){
+            int targetSquare = position + direction * i;
 
             if ((allies >> targetSquare & 1) == 1){
                 break;
@@ -266,8 +223,6 @@ public class Board {
 
     private List<Move> getRookMoves(Piece piece, int position){
         List<Move> moves = new ArrayList<>();
-        long allies = piece.getColour() == Colour.White ? getWhiteBitboard() : getBlackBitboard();
-        long enemies = piece.getColour() == Colour.White ? getBlackBitboard() : getWhiteBitboard();
 
         // only need to explore 4 directions, iterate until it finds enemy or ally
         int squaresUnder = position / 8;
@@ -276,71 +231,41 @@ public class Board {
         int squaresLeft = position % 8;
         int squaresRight = 7 - squaresLeft;
 
-        for (int i = 1; i < squaresOver; i++){
-            int targetSquare = position + 8 * i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
+        moves.addAll(exploreDirection(piece, position, 8, squaresOver));
+        moves.addAll(exploreDirection(piece, position, 1, squaresRight));
+        moves.addAll(exploreDirection(piece, position, -1, squaresLeft));
+        moves.addAll(exploreDirection(piece, position, -8, squaresUnder));
 
-            if ((allies >> targetSquare & 1) == 1){
-                break;
+        return moves;
+    }
+
+    private List<Move> getKnightMoves(Piece piece, int position){
+        List<Move> moves = new ArrayList<>();
+
+        int[] directions = {10, -10, 6, -6, 17, -17, 15, -15};
+
+        long allies = piece.getColour() == Colour.White ? getWhiteBitboard() : getBlackBitboard();
+
+        int startingColumn = position % 8;
+
+        for (int direction: directions){
+            int targetSquare = position + direction;
+
+            // if squareIndex outside of 0 and 63, skip move
+            if (!squareOnBoard(targetSquare)){
+                continue;
             }
 
-            moves.add(new Move(piece, position, targetSquare));
+            int targetColumn = targetSquare % 8;
 
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
-            }
-        }
-
-        for (int i = 1; i < squaresUnder; i++){
-            int targetSquare = position - 8 * i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
-
-            if ((allies >> targetSquare & 1) == 1){
-                break;
+            // if wrapped around board
+            if (Math.abs(startingColumn -targetColumn) > 2){
+                continue;
             }
 
-            moves.add(new Move(piece, position, targetSquare));
-
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
-            }
-        }
-
-        for (int i = 1; i < squaresLeft; i++){
-            int targetSquare = position - i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
-
-            if ((allies >> targetSquare & 1) == 1){
-                break;
-            }
-
-            moves.add(new Move(piece, position, targetSquare));
-
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
-            }
-        }
-
-        for (int i = 1; i < squaresRight; i++){
-            int targetSquare = position + i;
-            // if ally detected -> exit loop
-            // if enemy detected -> append and exit loop
-            // else -> append and continue
-
-            if ((allies >> targetSquare & 1) == 1){
-                break;
-            }
-
-            moves.add(new Move(piece, position, targetSquare));
-
-            if ((enemies >> targetSquare & 1) == 1){
-                break;
+            // if no allies
+            if (((allies >> targetSquare) & 1) == 0){
+                moves.add(new Move(piece, position, targetSquare));
             }
         }
         return moves;
@@ -348,59 +273,61 @@ public class Board {
 
     private List<Move> getKingMoves(Piece piece, int position){
         List<Move> moves = new ArrayList<>();
+
+        int[] directions = {-1,1,8,-8,7,-7,9,-9};
+
         long allies = piece.getColour() == Colour.White ? getWhiteBitboard() : getBlackBitboard();
 
-        // need to check every position
-        int row = position / 8;
+        int startingColumn = position % 8;
 
-        boolean canMoveUp = row < 7;
-        boolean canMoveDown = row > 0;
+        for (int direction: directions){
+            int targetSquare = position + direction;
 
-        int column = position % 8;
-
-        boolean canMoveLeft = column > 0;
-        boolean canMoveRight = column < 7;
-
-        if (canMoveUp){
-            if (((allies >> (position + 8)) & 1) == 0){
-                moves.add(new Move(piece, position, position + 8));
+            // if squareIndex outside of 0 and 63, skip move
+            if (!squareOnBoard(targetSquare)){
+                continue;
             }
 
-            // if king can move left and no ally
-            if (canMoveLeft && ((allies >> (position + 7)) & 1) == 0){
-                moves.add(new Move(piece, position, position + 7));
+            int targetColumn = targetSquare % 8;
+
+            // if wrapped around board
+            if (Math.abs(startingColumn -targetColumn) > 1){
+                continue;
             }
 
-            // if king can move left and no ally
-            if (canMoveRight && ((allies >> (position + 9)) & 1) == 0){
-                moves.add(new Move(piece, position, position + 9));
+            // if no allies
+            if (((allies >> targetSquare) & 1) == 0){
+                moves.add(new Move(piece, position, targetSquare));
             }
         }
-
-        if (canMoveDown){
-            if (((allies >> (position - 8)) & 1) == 0){
-                moves.add(new Move(piece, position, position - 8));
-            }
-
-            // if king can move left and no ally
-            if (canMoveLeft && ((allies >> (position - 9)) & 1) == 0){
-                moves.add(new Move(piece, position, position - 9));
-            }
-
-            // if king can move left and no ally
-            if (canMoveRight && ((allies >> (position - 7)) & 1) == 0){
-                moves.add(new Move(piece, position, position - 7));
-            }
-        }
-
-        if (canMoveLeft && ((allies >> position  - 1) == 0)){
-            moves.add(new Move(piece, position, position - 1));
-        }
-
-        if (canMoveRight && ((allies >> position  + 1) == 0)){
-            moves.add(new Move(piece, position, position + 1));
-        }
-
         return moves;
+    }
+
+    public void playMove(Move move){
+        // play move, it should change the relevant bitmaps
+        // get bitmap index from piece to move,
+        int bitboardIndex = getBitboardIndexFromPiece(move.getPieceToMove());
+        // flip bit on starting square
+        bitboards[bitboardIndex] ^= 1L << move.getStartingSquare();
+        // flip bit on target square
+        bitboards[bitboardIndex] ^= 1L << move.getTargetSquare();
+
+        // flip all other bitboard[targetSquare] to 0
+        // trigger Eval recalculation
+        evaluatePosition();
+        legalMoves = calculateAllLegalMoves();
+    }
+
+    private int getBitboardIndexFromPiece(Piece piece){
+        int bitboardIndex = piece.getColour() == Colour.White ? 0 : 1;
+
+        return switch (piece.getType()) {
+            case PieceType.Pawn -> bitboardIndex;
+            case PieceType.Knight -> bitboardIndex + 2;
+            case PieceType.Bishop -> bitboardIndex + 4;
+            case PieceType.Rook -> bitboardIndex + 6;
+            case PieceType.Queen -> bitboardIndex + 8;
+            case PieceType.King -> bitboardIndex + 10;
+        };
     }
 }
