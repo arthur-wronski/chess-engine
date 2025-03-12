@@ -31,10 +31,24 @@ class BoardGraphics extends JPanel {
         frame.add(this);
 
         frame.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent me) {
-                int clickedSquare = getSquareClicked(me.getX(), me.getY());
-                possibleMoves = getPossibleMoves(clickedSquare);
-                repaint();
+            private Point pressPoint;
+
+            @Override
+            public void mousePressed(MouseEvent me) {
+                // Store the point where the mouse is pressed
+                pressPoint = me.getPoint();
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent me) {
+                Point releasePoint = me.getPoint();
+                // Check if the release point is close to the press point (within a few pixels)
+                if (pressPoint.distance(releasePoint) < 5) {  // 5 pixels tolerance for slight movement
+                    // Treat this as a valid click
+                    int clickedSquare = getSquareClicked(me.getX(), me.getY());
+                    possibleMoves = getPossibleMoves(clickedSquare);
+                    repaint();
+                }
             }
         });
 
