@@ -11,7 +11,7 @@ import java.util.List;
 class BoardGraphics extends JPanel {
     static Board board = new Board();
     static int SQUARE_SIZE = 100;
-    private static List<Integer> possibleMoves= new ArrayList<>();
+    private List<Move> possibleMoves = new ArrayList<>();
 
     public void start(){
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
@@ -46,6 +46,16 @@ class BoardGraphics extends JPanel {
                 if (pressPoint.distance(releasePoint) < 10) {  // 10 pixels tolerance for slight movement
                     // Treat this as a valid click
                     int clickedSquare = getSquareClicked(me.getX(), me.getY());
+
+                    for (Move possibleMove : possibleMoves){
+                        if (possibleMove.getTargetSquare() == clickedSquare){
+                            board.playMove(possibleMove);
+                            possibleMoves = new ArrayList<>();
+                            repaint();
+                            return;
+                        }
+                    }
+
                     possibleMoves = getPossibleMoves(clickedSquare);
                     repaint();
                 }
@@ -65,7 +75,7 @@ class BoardGraphics extends JPanel {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         drawBoard(g);
-        drawPossibleMoves(g, possibleMoves);
+        drawPossibleMoves(g);
     }
 
     private void drawBoard(Graphics g){
@@ -110,26 +120,26 @@ class BoardGraphics extends JPanel {
         return rowClicked * 8 + columnClicked;
     }
 
-    private static List<Integer> getPossibleMoves(int squareIndex){
-        List<Integer> targetSquares = new ArrayList<>();
+    private static List<Move> getPossibleMoves(int squareIndex){
+        List<Move> possibleMoves = new ArrayList<>();
         // based on squareIndex, go through allMoves and get all moves which have
         // squareIndex as startingSquare and return a list of their targetSquares
         for (Move move : board.getLegalMoves()){
             if (move.getStartingSquare() == squareIndex){
-                targetSquares.add(move.getTargetSquare());
+                possibleMoves.add(move);
             }
         }
-        return targetSquares;
+        return possibleMoves;
     }
 
-    private static void drawPossibleMoves(Graphics g, List<Integer> possibleMoves){
+    private void drawPossibleMoves(Graphics g){
         int CIRCLE_SIZE = 20;
         g.setColor(new Color(180, 180, 180, 255));
         // for each squareIndex in possible moves
         // draw small circle?
-        for (int possibleMove : possibleMoves){
-            int row = possibleMove / 8;
-            int column = possibleMove % 8;
+        for (Move possibleMove : possibleMoves){
+            int row = possibleMove.getTargetSquare() / 8;
+            int column = possibleMove.getTargetSquare() % 8;
             g.fillOval(column * SQUARE_SIZE  + 40, 7 * SQUARE_SIZE - row * SQUARE_SIZE + 40, CIRCLE_SIZE, CIRCLE_SIZE);
         }
     }
