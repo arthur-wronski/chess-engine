@@ -323,7 +323,9 @@ public class Board {
 
         // trigger Eval recalculation
         evaluatePosition();
+        colourToPlay = colourToPlay == Colour.White? Colour.Black : Colour.White;
         legalMoves = calculateAllLegalMoves();
+
     }
 
     private int getBitboardIndexFromPiece(Piece piece){
