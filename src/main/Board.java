@@ -9,9 +9,8 @@ public class Board {
     // Will use enum ordering in piece type + colour to quickly access correct bitmap
     // e.g. bishop = 2 and black = 1 => access 2 * 2 + 1 = 5th bitmap
     private final long[] bitboards;
-    private Colour colourToPlay;
-    private List<Move> legalMoves;
-    private double evaluation;
+    public Colour colourToPlay;
+    private final List<Move> playedMoves;
 
     public Board() {
         // starting position
@@ -36,15 +35,14 @@ public class Board {
         };
 
         this.colourToPlay = Colour.White;
-        this.legalMoves = calculateAllLegalMoves();
-        this.evaluation = 0.2;
+        this.playedMoves = new ArrayList<>();
     }
 
     public List<Move> getLegalMoves(){
-        return this.legalMoves;
+        return calculateAllLegalMoves();
     }
 
-    public void evaluatePosition(){
+    public double evaluatePosition(){
         // how much the pieces are worth for eval: pawn = 1, knight = 3, bishop = 3.5, rook = 5, queen = 9
         double[] pieceWeights = new double[]{1, 3, 3.5, 5, 9};
 
@@ -62,8 +60,8 @@ public class Board {
             evaluationTotal += (negative ? -totalPieceWorth : totalPieceWorth);
         }
 
-        System.out.println("Current evaluation: " + evaluationTotal);
-        evaluation = evaluationTotal;
+//        System.out.println("Current evaluation: " + evaluationTotal);
+        return evaluationTotal;
     }
 
     private List<Move> calculateAllLegalMoves(){
@@ -152,7 +150,7 @@ public class Board {
 
         // check if move forward is within board and target square is unoccupied
         if (squareOnBoard(forwardIndex) && (getBothBitboards() >> forwardIndex & 1) == 0){
-            moves.add(new Move(piece, position, forwardIndex));
+            moves.add(new Move(piece, position, forwardIndex, getPieceFromSquareIndex(forwardIndex)));
 
             int currentRow = position / 8;
             boolean hasNotMoved = colour == Colour.White ? currentRow == 1 : currentRow == 6;
@@ -160,7 +158,7 @@ public class Board {
 
             // if pawn hasn't moved and square free
             if (hasNotMoved && (getBothBitboards() >> twoForwardIndex & 1) == 0 ){
-                moves.add(new Move(piece, position, twoForwardIndex));
+                moves.add(new Move(piece, position, twoForwardIndex, getPieceFromSquareIndex(twoForwardIndex)));
             }
         }
 
@@ -169,13 +167,13 @@ public class Board {
 
         // must check -> on board, pawn is not on left-most column and opposite coloured piece on target square
         if (squareOnBoard(leftTakeIndex) && (position % 8 != 0) && ((enemies >> leftTakeIndex & 1) == 1)){
-            moves.add(new Move(piece, position, leftTakeIndex));
+            moves.add(new Move(piece, position, leftTakeIndex, getPieceFromSquareIndex(leftTakeIndex)));
         }
 
         int rightTakeIndex = colour == Colour.White ? position + 9 : position - 7;
 
         if (squareOnBoard(rightTakeIndex) && (position % 8 != 7) && ((enemies >> rightTakeIndex & 1) == 1)){
-            moves.add(new Move(piece, position, rightTakeIndex));
+            moves.add(new Move(piece, position, rightTakeIndex, getPieceFromSquareIndex(rightTakeIndex)));
         }
 
         return moves;
@@ -212,7 +210,7 @@ public class Board {
                 break;
             }
 
-            moves.add(new Move(piece, position, targetSquare));
+            moves.add(new Move(piece, position, targetSquare, getPieceFromSquareIndex(targetSquare)));
 
             if ((enemies >> targetSquare & 1) == 1){
                 break;
@@ -265,7 +263,7 @@ public class Board {
 
             // if no allies
             if (((allies >> targetSquare) & 1) == 0){
-                moves.add(new Move(piece, position, targetSquare));
+                moves.add(new Move(piece, position, targetSquare, getPieceFromSquareIndex(targetSquare)));
             }
         }
         return moves;
@@ -297,7 +295,7 @@ public class Board {
 
             // if no allies
             if (((allies >> targetSquare) & 1) == 0){
-                moves.add(new Move(piece, position, targetSquare));
+                moves.add(new Move(piece, position, targetSquare, getPieceFromSquareIndex(targetSquare)));
             }
         }
         return moves;
@@ -306,26 +304,45 @@ public class Board {
     public void playMove(Move move){
         // play move, it should change the relevant bitmaps
         // get bitmap index from piece to move,
-        int bitboardIndex = getBitboardIndexFromPiece(move.getPieceToMove());
+        int movingPieceBitboardIndex = getBitboardIndexFromPiece(move.getPieceToMove());
         // flip bit on starting square
-        bitboards[bitboardIndex] ^= 1L << move.getStartingSquare();
+        bitboards[movingPieceBitboardIndex] ^= 1L << move.getStartingSquare();
 
-        long mask = ~(1L << move.getTargetSquare());
-
-        // flip all other bitboard[targetSquare] to 0
-        for (int i = 0; i < bitboards.length; i++){
-            // sets bitboard[targetSquare] = 0
-            bitboards[i] &= mask;
+        // if there is a captured Piece, flip the piece's index in respective bitboard to 0
+        if (move.getCapturedPiece().isPresent()){
+            // used to only flip the piece's bitboard index to 0
+            long mask = ~(1L << move.getTargetSquare());
+            int capturedPieceBitboardIndex = getBitboardIndexFromPiece(move.getCapturedPiece().get());
+            bitboards[capturedPieceBitboardIndex] &= mask;
         }
 
         // flip bit on target square, (sets to 1 as was set to 0 just before)
-        bitboards[bitboardIndex] ^= 1L << move.getTargetSquare();
+        bitboards[movingPieceBitboardIndex] ^= 1L << move.getTargetSquare();
 
-        // trigger Eval recalculation
-        evaluatePosition();
         colourToPlay = colourToPlay == Colour.White? Colour.Black : Colour.White;
-        legalMoves = calculateAllLegalMoves();
+        playedMoves.add(move);
 
+    }
+
+    public void undoLastMove(){
+        Move move = playedMoves.getLast();
+
+        int movingPieceBitboardIndex = getBitboardIndexFromPiece(move.getPieceToMove());
+
+        // flip bit on target Square
+        bitboards[movingPieceBitboardIndex] ^= 1L << move.getTargetSquare();
+
+        // if there is a captured Piece, flip the piece's index in respective bitboard to 1
+        if (move.getCapturedPiece().isPresent()){
+            int capturedPieceBitboardIndex = getBitboardIndexFromPiece(move.getCapturedPiece().get());
+            bitboards[capturedPieceBitboardIndex] |= 1L << move.getTargetSquare();
+        }
+
+        // flip bit on starting square -> moving piece back to starting square
+        bitboards[movingPieceBitboardIndex] ^= 1L << move.getStartingSquare();
+
+        colourToPlay = colourToPlay == Colour.White? Colour.Black : Colour.White;
+        playedMoves.removeLast();
     }
 
     private int getBitboardIndexFromPiece(Piece piece){
@@ -340,4 +357,67 @@ public class Board {
             case PieceType.King -> bitboardIndex + 10;
         };
     }
+
+    private double minimax(int depth, boolean maximising){
+        if (depth == 0){
+            return evaluatePosition();
+        }
+        
+        List<Move> currentLegalMoves = getLegalMoves();
+
+        if (maximising){
+            double alpha = Double.NEGATIVE_INFINITY;
+
+            for (Move legalMove : currentLegalMoves) {
+                playMove(legalMove);
+                double eval = minimax(depth - 1, false);
+                undoLastMove();
+                alpha = Math.max(alpha, eval);
+            }
+            return alpha;
+        }else{
+            double beta = Double.POSITIVE_INFINITY;
+
+            for (Move legalMove : currentLegalMoves) {
+                playMove(legalMove);
+                double eval = minimax(depth - 1, true);
+                undoLastMove();
+                beta = Math.min(beta, eval);
+            }
+
+            return beta;
+        }
+    }
+
+    public Move findBestMove(int depth) {
+        Move bestMove = null;
+        boolean maximising = (colourToPlay == Colour.White);
+
+        double bestEval = maximising ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+
+        List<Move> currentLegalMoves = getLegalMoves();
+
+        for (Move legalMove : currentLegalMoves) {
+            playMove(legalMove);
+            double eval = minimax(depth - 1, !maximising);
+            undoLastMove();
+
+            if (maximising) {
+                if (eval > bestEval) {
+                    bestEval = eval;
+                    bestMove = legalMove;
+                }
+            } else {
+                if (eval < bestEval) {
+                    bestEval = eval;
+                    bestMove = legalMove;
+                }
+            }
+        }
+
+        System.out.println("Best eval for " + colourToPlay + ": " + bestEval + " with move: " + bestMove);
+        return bestMove;
+    }
+
+
 }
