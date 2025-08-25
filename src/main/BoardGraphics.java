@@ -14,11 +14,7 @@ class BoardGraphics extends JPanel {
     private List<Move> possibleMoves = new ArrayList<>();
 
     public void start(){
-        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                createAndShowGUI();
-            }
-        });
+        javax.swing.SwingUtilities.invokeLater(this::createAndShowGUI);
     }
 
     // need to on the click of a square, extract the square index and find all possible moves where
@@ -52,6 +48,13 @@ class BoardGraphics extends JPanel {
                             board.playMove(possibleMove);
                             possibleMoves = new ArrayList<>();
                             repaint();
+                            if (board.colourToPlay == Colour.Black) {
+                                new javax.swing.Timer(100, e -> {
+                                    board.playMove(board.findBestMove(5));
+                                    repaint();
+                                    ((javax.swing.Timer)e.getSource()).stop();
+                                }).start();
+                            }
                             return;
                         }
                     }
@@ -97,9 +100,9 @@ class BoardGraphics extends JPanel {
     private void drawSquare(Graphics g, int row, int column){
         // get square colour based on coordinate
         if ((row + column) % 2 == 0) {
-            g.setColor(new Color(38, 34, 87));
+            g.setColor(new Color(160, 82, 45));
         } else {
-            g.setColor(new Color(236, 219, 219));
+            g.setColor(new Color(222, 184, 135));
         }
 
         // draw square
